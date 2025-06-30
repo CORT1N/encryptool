@@ -1,0 +1,43 @@
+{
+  "name": "Python Devcontainer",
+  "build": {
+    "dockerfile": "../Dockerfile.dev"
+  },
+  "customizations": {
+    "vscode": {
+        "extensions": [
+          "ms-python.python",
+          "charliermarsh.ruff",
+          "esbenp.prettier-vscode",
+          "aaron-bond.better-comments",
+          "mikestead.dotenv",
+          "usernamehw.errorlens",
+          "KevinRose.vsc-python-indent",
+          "BriteSnow.vscode-toggle-quotes",
+          "njpwerner.autodocstring",
+          "tal7aouy.icons",
+          "kisstkondoros.vscode-gutter-preview",
+          "VisualStudioExptTeam.vscodeintellicode",
+          "VisualStudioExptTeam.intellicode-api-usage-examples",
+          "fnando.linter",
+          "yzhang.markdown-all-in-one",
+          "DavidAnson.vscode-markdownlint",
+          "mushan.vscode-paste-image",
+          "quicktype.quicktype",
+          "christian-kohler.path-intellisense",
+          "ms-python.vscode-pylance",
+          "ms-python.vscode-python-envs",
+          "donjayamanne.python-extension-pack",
+          "shardulm94.trailing-spaces",
+          "styled-components.vscode-styled-components",
+          "GitHub.copilot",
+          "GitHub.copilot-chat"
+        ],
+        "settings": {
+            "python.defaultInterpreterPath": "/usr/local/bin/python",
+            "terminal.integrated.shell.linux": "/bin/bash",
+            "ruff.lint.select": ["ALL"]
+        }
+    }
+  }
+}
