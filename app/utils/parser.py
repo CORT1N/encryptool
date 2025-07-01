@@ -1,7 +1,8 @@
 """Parser for command line arguments and configuration files."""
 import argparse
+import logging
 
-from app.utils.logger import logger
+logger = logging.getLogger("encryptool")
 
 
 class Parser:
@@ -99,7 +100,7 @@ class Parser:
         """Parse and return the command line arguments."""
         logger.info("Parsing command line arguments")
         args = self.parser.parse_args()
-        logger.debug(f"Arguments parsed: {args}")
+        logger.debug("Arguments parsed: %s", args)
         if not args.command:
             logger.warning("No command provided")
         return args
