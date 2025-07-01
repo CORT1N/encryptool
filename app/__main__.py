@@ -4,7 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.crypto import dna, rsa
+from app.crypto.dna import DNAEngine  # <- Le nom du module POO refacto
+from app.crypto.rsa import RSAEngine
 from app.utils.parser import parser
 
 if TYPE_CHECKING:
@@ -12,6 +13,8 @@ if TYPE_CHECKING:
 
 PRIVATE_KEY_PATH = "private_key.pem"
 PUBLIC_KEY_PATH = "public_key.pem"
+DEFAULT_SECRET = "MaCleSecrete123"
+
 
 def save_or_print(data: str, args: argparse.Namespace, default_name: str) -> None:
     """Save the data to a file or print it to stdout depending on args.stdout."""
@@ -26,6 +29,7 @@ def save_or_print(data: str, args: argparse.Namespace, default_name: str) -> Non
         output_path.write_text(data)
         print(f"Saved output to {output_path.resolve()}")
 
+
 def read_input(args: argparse.Namespace, file_attr: str) -> str | None:
     """Read plaintext or ciphertext from file or stdin."""
     if args.stdin:
@@ -36,6 +40,7 @@ def read_input(args: argparse.Namespace, file_attr: str) -> str | None:
     print("Error: No input provided (use a file or --stdin)")
     return None
 
+
 def encrypt_rsa(args: argparse.Namespace) -> None:
     """Encrypt plaintext using RSA."""
     plaintext = read_input(args, "plaintext_path")
@@ -43,9 +48,10 @@ def encrypt_rsa(args: argparse.Namespace) -> None:
         return
 
     pubkey_path = args.pubkey if args.pubkey else PUBLIC_KEY_PATH
-    engine = rsa.RSAEngine(pubkey_path=pubkey_path)
+    engine = RSAEngine(pubkey_path=pubkey_path)
     ciphertext_bytes = engine.encrypt(plaintext)
     save_or_print(ciphertext_bytes.hex(), args, "ciphertext.txt")
+
 
 def decrypt_rsa(args: argparse.Namespace) -> None:
     """Decrypt ciphertext using RSA."""
@@ -54,7 +60,7 @@ def decrypt_rsa(args: argparse.Namespace) -> None:
         return
 
     privkey_path = args.privkey if args.privkey else PRIVATE_KEY_PATH
-    engine = rsa.RSAEngine(privkey_path=privkey_path)
+    engine = RSAEngine(privkey_path=privkey_path)
     try:
         ciphertext = bytes.fromhex(ciphertext_hex.strip())
         plaintext = engine.decrypt(ciphertext)
@@ -62,15 +68,17 @@ def decrypt_rsa(args: argparse.Namespace) -> None:
     except Exception as e:
         print(f"Decryption failed: {e}")
 
+
 def encrypt_dna(args: argparse.Namespace) -> None:
     """Encrypt plaintext using DNA encryption."""
     plaintext = read_input(args, "plaintext_path")
     if plaintext is None:
         return
 
-    secret_key = "MaCleSecrete123"
-    encrypted = dna.encrypt(plaintext, secret_key, timestamp=None)
+    engine = DNAEngine(secret_key=DEFAULT_SECRET)
+    encrypted = engine.encrypt(plaintext)
     save_or_print(encrypted, args, "ciphertext.txt")
+
 
 def decrypt_dna(args: argparse.Namespace) -> None:
     """Decrypt ciphertext using DNA encryption."""
@@ -79,15 +87,12 @@ def decrypt_dna(args: argparse.Namespace) -> None:
         return
 
     try:
-        plaintext = dna.decrypt(
-            encoded.strip(),
-            secret_key="MaCleSecrete123",
-            expected_hash=None,
-            timestamp_tolerance=300,
-        )
+        engine = DNAEngine(secret_key=DEFAULT_SECRET)
+        plaintext = engine.decrypt(encoded.strip())
         save_or_print(plaintext, args, "plaintext.txt")
     except Exception as e:
         print(f"Decryption failed: {e}")
+
 
 def main() -> None:
     """Launch main function."""
@@ -105,6 +110,7 @@ def main() -> None:
             decrypt_rsa(args)
     else:
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()
