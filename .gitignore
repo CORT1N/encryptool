@@ -6,3 +6,4 @@ output/**
 
 # Critical files
 *_key.pem
+.pass

@@ -63,6 +63,11 @@ class Parser:
             type=str,
             help="Path to save the ciphertext (default: output/ciphertext.txt)",
         )
+        encrypt_parser.add_argument(
+            "--secret",
+            type=str,
+            help="Path to secret key file for DNA encryption",
+        )
         logger.debug("Encrypt parser set up")
 
     def _setup_decrypt_parser(self) -> None:
@@ -93,6 +98,11 @@ class Parser:
             "--output-path", "-o",
             type=str,
             help="Path to save the plaintext (default: output/plaintext.txt)",
+        )
+        decrypt_parser.add_argument(
+            "--secret",
+            type=str,
+            help="Path to secret key file for DNA decryption",
         )
         logger.debug("Decrypt parser set up")
 

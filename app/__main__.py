@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import logging
+from getpass import getpass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.crypto.dna import DNAEngine  # <- Le nom du module POO refacto
+from app.crypto.dna import DNAEngine
 from app.crypto.rsa import RSAEngine
 from app.utils.parser import Parser
 
@@ -16,7 +17,6 @@ if TYPE_CHECKING:
 
 PRIVATE_KEY_PATH = "private_key.pem"
 PUBLIC_KEY_PATH = "public_key.pem"
-DEFAULT_SECRET = "MaCleSecrete123"
 
 def setup_logging() -> None:
     """Configure the logging settings."""
@@ -39,6 +39,22 @@ def save_or_print(data: str, args: argparse.Namespace, default_name: str) -> Non
         output_path.write_text(data)
         logger.info("Saved output to %s", output_path.resolve())
 
+def get_secret_key(args: argparse.Namespace) -> str:
+    """Get secret key for DNA encryption/decryption.
+
+    - If --secret is given, read secret from that file
+    - Else if --privkey is given, derive secret from private key file contents
+    - Else prompt the user for the secret interactively
+    """
+    if hasattr(args, "secret") and args.secret:
+        secret_path = Path(args.secret)
+        if secret_path.exists():
+            return secret_path.read_text().strip()
+        e = f"Secret file not found: {secret_path}"
+        raise FileNotFoundError(e)
+
+    secret = getpass("Enter secret key for DNA encryption/decryption: ")
+    return secret.strip()
 
 def read_input(args: argparse.Namespace, file_attr: str) -> str | None:
     """Read plaintext or ciphertext from file or stdin."""
@@ -94,8 +110,13 @@ def encrypt_dna(args: argparse.Namespace) -> None:
     if plaintext is None:
         logger.error("No plaintext to encrypt")
         return
+    try:
+        secret_key = get_secret_key(args)
+    except Exception:
+        logger.exception("Failed to get secret key.")
+        return
 
-    engine = DNAEngine(secret_key=DEFAULT_SECRET)
+    engine = DNAEngine(secret_key=secret_key)
     encrypted = engine.encrypt(plaintext)
     save_or_print(encrypted, args, "ciphertext.txt")
     logger.info("DNA encryption completed")
@@ -108,9 +129,14 @@ def decrypt_dna(args: argparse.Namespace) -> None:
     if encoded is None:
         logger.error("No ciphertext to decrypt")
         return
+    try:
+        secret_key = get_secret_key(args)
+    except Exception:
+        logger.exception("Failed to get secret key.")
+        return
 
     try:
-        engine = DNAEngine(secret_key=DEFAULT_SECRET)
+        engine = DNAEngine(secret_key=secret_key)
         plaintext = engine.decrypt(encoded.strip())
         save_or_print(plaintext, args, "plaintext.txt")
         logger.info("DNA decryption completed")
