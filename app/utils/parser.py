@@ -13,10 +13,10 @@ parser.add_argument(
 
 encrypt_parser = subparsers.add_parser("e", help="Encrypt")
 encrypt_parser.add_argument(
-    "message",
+    "plaintext_path",
     nargs="?",
     type=str,
-    help="Message to encrypt",
+    help="File containing the message to encrypt",
 )
 encrypt_parser.add_argument(
     "--pubkey",
@@ -24,24 +24,28 @@ encrypt_parser.add_argument(
     help="Path to the public key file (RSA mode)",
 )
 encrypt_parser.add_argument(
-    "--input", "-i",
+    "--stdin",
     type=str,
-    help="Path to input file containing plaintext",
+    help="Read the text from stdin instead of a file",
 )
 encrypt_parser.add_argument(
-    "-o", "--output",
-    type=str,
-    help="Output file to save the ciphertext",
-    nargs="?",
-    const="ciphertext.txt",
+    "--stdout",
+    action="store_true",
+    help="Print the ciphertext to stdout instead of saving to a file",
 )
+encrypt_parser.add_argument(
+    "--output-path", "-o",
+    type=str,
+    help="Path to save the ciphertext (default: output/ciphertext.txt)",
+)
+
 
 decrypt_parser = subparsers.add_parser("d", help="Decrypt")
 decrypt_parser.add_argument(
-    "ciphertext",
+    "ciphertext_path",
     nargs="?",
     type=str,
-    help="Ciphertext to decrypt",
+    help="File containing the ciphertext to decrypt",
 )
 decrypt_parser.add_argument(
     "--privkey",
@@ -49,14 +53,17 @@ decrypt_parser.add_argument(
     help="Path to the private key file (RSA mode)",
 )
 decrypt_parser.add_argument(
-    "--input", "-i",
+    "--stdin",
     type=str,
-    help="Path to input file containing ciphertext",
+    help="Read the ciphertext from stdin instead of a file",
 )
 decrypt_parser.add_argument(
-    "-o", "--output",
+    "--stdout",
+    action="store_true",
+    help="Print the plaintext to stdout instead of saving to a file",
+)
+decrypt_parser.add_argument(
+    "--output-path", "-o",
     type=str,
-    help="Output file to save the plaintext",
-    nargs="?",
-    const="plaintext.txt",
+    help="Path to save the plaintext (default: output/plaintext.txt)",
 )
