@@ -37,7 +37,7 @@ def dna_to_message(dna: str) -> str:
 
 def get_permutation(n: int, key_seed: str) -> list[int]:
     """Generate a random permutation of indices based on a key seed."""
-    seed_int = int(key_seed, 16)  # No modulo
+    seed_int = int(key_seed, 16)
     random.seed(seed_int)
     indices = list(range(n))
     random.shuffle(indices)
@@ -132,12 +132,12 @@ def decrypt(
     for i, block in enumerate(blocks):
         seed_str = f"{secret_key}{timestamp}{i}"
         seed_hex = compute_hash(seed_str)
-        indices = get_permutation(len(block), seed_hex)  # recreate indices
+        indices = get_permutation(len(block), seed_hex)
         decrypted_blocks.append(inverse_permute_block(block, indices))
 
     decrypted_dna = "".join(decrypted_blocks)
 
-    dna_len = message_length * 4  # Each char = 4 bases
+    dna_len = message_length * 4
     decrypted_dna = decrypted_dna[:dna_len]
     message = dna_to_message(decrypted_dna)
 
