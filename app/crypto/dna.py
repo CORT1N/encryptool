@@ -7,6 +7,8 @@ import random
 import time
 from typing import TypedDict
 
+from app.utils.logger import logger
+
 
 class EncryptedDNAData(TypedDict):
     """Data structure for encrypted DNA information."""
@@ -24,22 +26,34 @@ class DNAEngine:
         """Initialize the DNAEngine."""
         self.secret_key = secret_key
         self.timestamp_tolerance = timestamp_tolerance
+        logger.info(
+            f"DNAEngine initialized with timestamp tolerance {timestamp_tolerance}",
+            )
 
     @staticmethod
     def _byte_to_dna(byte: int) -> str:
         bin_str = f"{byte:08b}"
         mapping = {"00": "A", "01": "C", "10": "G", "11": "T"}
-        return "".join(mapping[bin_str[i:i+2]] for i in range(0, 8, 2))
+        result = "".join(mapping[bin_str[i:i+2]] for i in range(0, 8, 2))
+        logger.debug(f"_byte_to_dna: {byte} -> {result}")
+        return result
 
     @staticmethod
     def _dna_to_byte(dna: str) -> int:
         rev_map = {"A": "00", "C": "01", "G": "10", "T": "11"}
         bits = "".join(rev_map[b] for b in dna)
-        return int(bits, 2)
+        result = int(bits, 2)
+        logger.debug(f"_dna_to_byte: {dna} -> {result}")
+        return result
 
     @classmethod
     def _message_to_dna(cls, message: str) -> str:
-        return "".join(cls._byte_to_dna(ord(c)) for c in message)
+        result = "".join(cls._byte_to_dna(ord(c)) for c in message)
+        logger.debug(
+            f"_message_to_dna: message length {len(message)} "
+            f"-> dna length {len(result)}",
+            )
+        return result
 
     @classmethod
     def _dna_to_message(cls, dna: str) -> str:
@@ -47,43 +61,65 @@ class DNAEngine:
             chr(cls._dna_to_byte(dna[i:i+4]))
             for i in range(0, len(dna), 4)
         ]
-        return "".join(chars)
+        result = "".join(chars)
+        logger.debug(
+            f"_dna_to_message: dna length {len(dna)} "
+            f"-> message length {len(result)}",
+            )
+        return result
 
     @staticmethod
     def _compute_hash(data_str: str) -> str:
-        return hashlib.sha256(data_str.encode()).hexdigest()
+        result = hashlib.sha256(data_str.encode()).hexdigest()
+        logger.debug(
+            f"_compute_hash: computed hash {result} for data of length {len(data_str)}",
+            )
+        return result
 
     @staticmethod
     def _get_timestamp() -> int:
-        return int(time.time())
+        result = int(time.time())
+        logger.debug(f"_get_timestamp: {result}")
+        return result
 
     def _get_permutation(self, n: int, seed_hex: str) -> list[int]:
         seed_int = int(seed_hex, 16)
         random.seed(seed_int)
         indices = list(range(n))
         random.shuffle(indices)
+        logger.debug(
+            f"_get_permutation: generated permutation "
+            f"of length {n} with seed {seed_hex}",
+            )
         return indices
 
     def _permute_block(self, block: str, seed_hex: str) -> tuple[str, list[int]]:
         indices = self._get_permutation(len(block), seed_hex)
-        return "".join(block[i] for i in indices), indices
+        permuted = "".join(block[i] for i in indices)
+        logger.debug(f"_permute_block: block permuted from {block} to {permuted}")
+        return permuted, indices
 
     def _inverse_permute_block(self, block: str, indices: list[int]) -> str:
         original = [""] * len(block)
         for i, c in enumerate(block):
             original[indices[i]] = c
-        return "".join(original)
+        result = "".join(original)
+        logger.debug(f"_inverse_permute_block: block inverse permuted to {result}")
+        return result
 
     def encrypt(self, message: str, timestamp: int | None = None) -> str:
         """Encrypt a message into DNA format with a timestamp."""
+        logger.info("Starting encryption")
         if timestamp is None:
             timestamp = self._get_timestamp()
+            logger.debug(f"No timestamp provided, using current timestamp {timestamp}")
 
         dna = self._message_to_dna(message)
         block_size = 8
         if len(dna) % block_size != 0:
             padding_len = block_size - (len(dna) % block_size)
             dna += "A" * padding_len
+            logger.debug(f"Padded DNA with {padding_len} 'A's")
 
         blocks = [dna[i:i+block_size] for i in range(0, len(dna), block_size)]
         encrypted_blocks = []
@@ -98,14 +134,17 @@ class DNAEngine:
         hash_str = self._compute_hash(message + str(timestamp))
         message_length = len(message)
 
+        logger.info("Encryption complete")
         return f"{encrypted_dna}:{hash_str}:{timestamp}:{message_length}"
 
     def decrypt(self, encoded: str, expected_hash: str | None = None) -> str:
         """Decrypt a DNA-encoded message."""
+        logger.info("Starting decryption")
         parts = encoded.split(":")
         parts_length = 4
         if len(parts) != parts_length:
             e = "Invalid encoded DNA format"
+            logger.error(e)
             raise ValueError(e)
 
         encrypted_dna, hash_str, timestamp_str, length_str = parts
@@ -132,14 +171,18 @@ class DNAEngine:
         recomputed_hash = self._compute_hash(message + str(timestamp))
         if expected_hash and expected_hash != recomputed_hash:
             e = "Provided hash does not match recomputed hash"
+            logger.error(e)
             raise ValueError(e)
         if hash_str != recomputed_hash:
             e = "Hash in encrypted data does not match recomputed hash"
+            logger.error(e)
             raise ValueError(e)
 
         now = self._get_timestamp()
         if abs(now - timestamp) > self.timestamp_tolerance:
             e = f"Timestamp tolerance exceeded: {now} - {timestamp}"
+            logger.error(e)
             raise ValueError(e)
 
+        logger.info("Decryption successful")
         return message
