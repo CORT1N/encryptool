@@ -35,27 +35,26 @@ def dna_to_message(dna: str) -> str:
         chars.append(chr(byte))
     return "".join(chars)
 
-def permute_block(block: str, key_seed: str) -> str:
-    """Swap a block of DNA bases using a key seed."""
-    random.seed(key_seed)
-    block_list = list(block)
-    random.shuffle(block_list)
-    return "".join(block_list)
+def get_permutation(n: int, key_seed: str) -> list[int]:
+    """Generate a random permutation of indices based on a key seed."""
+    seed_int = int(key_seed, 16)  # No modulo
+    random.seed(seed_int)
+    indices = list(range(n))
+    random.shuffle(indices)
+    return indices
 
-def inverse_permute_block(permuted_block: str, key_seed: str) -> str:
-    """Reverse the permutation of a DNA block using the same key seed."""
-    random.seed(key_seed)
-    block_list = list(permuted_block)
-    original_indices = list(range(len(block_list)))
-    shuffled_indices = original_indices[:]
-    random.shuffle(shuffled_indices)
-    inverse_indices = [0] * len(block_list)
-    for i, shuffled_idx in enumerate(shuffled_indices):
-        inverse_indices[shuffled_idx] = i
-    original_block = [""] * len(block_list)
-    for i, c in enumerate(block_list):
-        original_block[inverse_indices[i]] = c
-    return "".join(original_block)
+def permute_block(block: str, key_seed: str) -> tuple[str, list[int]]:
+    """Permute a block of DNA using a key seed."""
+    indices = get_permutation(len(block), key_seed)
+    permuted = "".join(block[i] for i in indices)
+    return permuted, indices
+
+def inverse_permute_block(permuted_block: str, indices: list[int]) -> str:
+    """Inverse permute a block of DNA using the original indices."""
+    original = [""] * len(permuted_block)
+    for i, c in enumerate(permuted_block):
+        original[indices[i]] = c
+    return "".join(original)
 
 def compute_hash(data_str: str) -> str:
     """Compute SHA256 hash of a string."""
@@ -76,41 +75,12 @@ class EncryptedDNAData(TypedDict):
     hash: str
     timestamp: int
 
-def encode_encrypted_dna(encrypted_dna: str, hash_str: str, timestamp: int) -> str:
-    """Encode the encrypted dna, hash, and timestamp into a single string."""
-    return f"{encrypted_dna}:{hash_str}:{timestamp}"
-
-def decode_encrypted_dna(encoded_str: str) -> EncryptedDNAData:
-    """Decode the encoded dna string into its components."""
-    default_dna_length = 3
-    parts = encoded_str.split(":")
-    if len(parts) != default_dna_length:
-        e = "Invalid encoded dna format"
-        raise ValueError(e)
-    encrypted_dna, hash_str, timestamp_str = parts
-    return {
-        "encrypted_dna": encrypted_dna,
-        "hash": hash_str,
-        "timestamp": int(timestamp_str),
-    }
-
 def encrypt(
     message: str,
     secret_key: str,
     timestamp: int | None,
-    ) -> str:
-    """Encrypt DNA by blocks with dynamic permutation.
-
-    - message: string to encrypt
-    - secret_key: secret key used for dynamic permutation
-    - timestamp (optional): timestamp to use, otherwise current timestamp
-    Returns a dictionary:
-    {
-        "encrypted_dna": str,
-        "hash": str,
-        "timestamp": int
-    }
-    """
+) -> str:
+    """Encrypt DNA by blocks with dynamic permutation."""
     if timestamp is None:
         timestamp = get_timestamp()
 
@@ -119,59 +89,56 @@ def encrypt(
     if len(dna) % block_size != 0:
         padding_len = block_size - (len(dna) % block_size)
         dna += "A" * padding_len
+
     blocks = [dna[i:i+block_size] for i in range(0, len(dna), block_size)]
 
     encrypted_blocks = []
     for i, block in enumerate(blocks):
         seed_str = f"{secret_key}{timestamp}{i}"
         seed_hex = compute_hash(seed_str)
-        encrypted_blocks.append(permute_block(block, seed_hex))
+        permuted_block, _ = permute_block(block, seed_hex)
+        encrypted_blocks.append(permuted_block)
 
     encrypted_dna = "".join(encrypted_blocks)
     hash_str = compute_hash(message + str(timestamp))
+    message_length = len(message)
 
-    return encode_encrypted_dna(
-        encrypted_dna,
-        hash_str,
-        timestamp,
-    )
+    return f"{encrypted_dna}:{hash_str}:{timestamp}:{message_length}"
 
 def decrypt(
     encoded_encrypted_dna: str,
     secret_key: str,
     expected_hash: str | None,
     timestamp_tolerance: int = 300,
-    ) -> str:
-    """Decrypt DNA + integrity check + timestamp validation.
+) -> str:
+    """Decrypt DNA + integrity check + timestamp validation."""
+    parts = encoded_encrypted_dna.split(":")
+    parts_number = 4
+    if len(parts) != parts_number:
+        e = "Invalid encoded dna format"
+        raise ValueError(e)
 
-    - encrypted_dict: dictionary with keys 'encrypted_dna', 'hash', 'timestamp'
-    - secret_key: secret key used for dynamic permutation
-    - expected_hash (optional): hash to verify, otherwise checks hash in encrypted_dict
-    - timestamp_tolerance: tolerance in seconds for timestamp (e.g., 300 = 5 minutes)
-    Returns the plaintext message or raises an error if integrity/timestamp check fails.
-    """
-    encrypted_dict = decode_encrypted_dna(encoded_encrypted_dna)
-    encrypted_dna = encrypted_dict["encrypted_dna"]
-    hash_str = encrypted_dict.get("hash")
-    timestamp = encrypted_dict["timestamp"]
+    encrypted_dna, hash_str, timestamp_str, length_str = parts
+    timestamp = int(timestamp_str)
+    message_length = int(length_str)
 
     block_size = 8
     blocks = [
-        encrypted_dna[i:i+block_size] for i in range(
-            0,
-            len(encrypted_dna),
-            block_size,
-            )
-        ]
+        encrypted_dna[i:i+block_size]
+        for i in range(0, len(encrypted_dna), block_size)
+    ]
 
     decrypted_blocks = []
     for i, block in enumerate(blocks):
         seed_str = f"{secret_key}{timestamp}{i}"
         seed_hex = compute_hash(seed_str)
-        decrypted_blocks.append(inverse_permute_block(block, seed_hex))
+        indices = get_permutation(len(block), seed_hex)  # recreate indices
+        decrypted_blocks.append(inverse_permute_block(block, indices))
 
     decrypted_dna = "".join(decrypted_blocks)
-    decrypted_dna = decrypted_dna.rstrip("A")
+
+    dna_len = message_length * 4  # Each char = 4 bases
+    decrypted_dna = decrypted_dna[:dna_len]
     message = dna_to_message(decrypted_dna)
 
     recomputed_hash = compute_hash(message + str(timestamp))
