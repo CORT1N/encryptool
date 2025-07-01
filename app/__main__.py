@@ -81,6 +81,12 @@ def encrypt_rsa(args: argparse.Namespace) -> None:
     engine = RSAEngine(pubkey_path=pubkey_path)
     ciphertext_bytes = engine.encrypt(plaintext)
     save_or_print(ciphertext_bytes.hex(), args, "ciphertext.txt")
+    if getattr(args, "sign", False):
+        privkey_path = args.privkey if args.privkey else PRIVATE_KEY_PATH
+        engine = RSAEngine(privkey_path=privkey_path)
+        signature = engine.sign(plaintext)
+        save_or_print(signature.hex(), args, "signature.txt")
+        logger.info("Message signed after encryption")
     logger.info("RSA encryption completed")
 
 
@@ -96,12 +102,63 @@ def decrypt_rsa(args: argparse.Namespace) -> None:
     engine = RSAEngine(privkey_path=privkey_path)
     try:
         ciphertext = bytes.fromhex(ciphertext_hex.strip())
-        plaintext = engine.decrypt(ciphertext)
+        if getattr(args, "verify", False):
+            signature_hex = read_input(args, "signature_path")
+            if signature_hex is None:
+                logger.error("No signature provided for verification")
+                return
+
+            pubkey_path = args.pubkey if args.pubkey else PUBLIC_KEY_PATH
+            verify_engine = RSAEngine(pubkey_path=pubkey_path)
+            signature = bytes.fromhex(signature_hex.strip())
+            plaintext = engine.decrypt(ciphertext)
+
+            if not verify_engine.verify(plaintext, signature):
+                return
+        else:
+            plaintext = engine.decrypt(ciphertext)
         save_or_print(plaintext, args, "plaintext.txt")
         logger.info("RSA decryption completed")
     except Exception:
         logger.exception("Decryption failed.")
 
+def sign_rsa(args: argparse.Namespace) -> None:
+    """Sign a message using RSA."""
+    logger.info("Starting RSA signing")
+    message = read_input(args, "message_path")
+    if message is None:
+        logger.error("No message to sign")
+        return
+
+    privkey_path = args.privkey if args.privkey else PRIVATE_KEY_PATH
+    engine = RSAEngine(privkey_path=privkey_path)
+    signature = engine.sign(message)
+    save_or_print(signature.hex(), args, "signature.txt")
+    logger.info("RSA signing completed")
+
+
+def verify_rsa(args: argparse.Namespace) -> None:
+    """Verify a signature using RSA."""
+    logger.info("Starting RSA signature verification")
+
+    message = read_input(args, "file_path")
+    if message is None:
+        logger.error("No message provided for verification")
+        return
+
+    signature_hex = read_input(args, "signature_path")
+    if signature_hex is None:
+        logger.error("No signature provided for verification")
+        return
+
+    pubkey_path = args.pubkey if args.pubkey else PUBLIC_KEY_PATH
+    engine = RSAEngine(pubkey_path=pubkey_path)
+    signature = bytes.fromhex(signature_hex.strip())
+
+    if engine.verify(message, signature):
+        logger.info("Signature verification successful")
+    else:
+        logger.warning("Signature verification failed")
 
 def encrypt_dna(args: argparse.Namespace) -> None:
     """Encrypt plaintext using DNA encryption."""
@@ -145,7 +202,7 @@ def decrypt_dna(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    """Launch main function."""
+    """Launch the application."""
     setup_logging()
     logger.info("Application started")
     parser = Parser()
@@ -161,6 +218,10 @@ def main() -> None:
             decrypt_dna(args)
         else:
             decrypt_rsa(args)
+    elif args.command == "s":
+        sign_rsa(args)
+    elif args.command == "v":
+        verify_rsa(args)
     else:
         logger.warning("Unknown command: %s", args.command)
         parser.print_help()

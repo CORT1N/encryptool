@@ -21,6 +21,8 @@ class Parser:
         self._setup_common_args()
         self._setup_encrypt_parser()
         self._setup_decrypt_parser()
+        self._setup_signing_parser()
+        self._setup_verifying_parser()
         logger.debug("Argument parser initialized with subparsers")
 
     def _setup_common_args(self) -> None:
@@ -46,7 +48,12 @@ class Parser:
         encrypt_parser.add_argument(
             "--pubkey",
             type=str,
-            help="Path to the public key file (RSA mode)",
+            help="Path to the public key file (RSA mode, defaults to public.pem)",
+        )
+        encrypt_parser.add_argument(
+            "--privkey",
+            type=str,
+            help="Path to the private key file (RSA mode, defaults to private.pem)",
         )
         encrypt_parser.add_argument(
             "--stdin",
@@ -68,6 +75,12 @@ class Parser:
             type=str,
             help="Path to secret key file for DNA encryption",
         )
+        encrypt_parser.add_argument(
+            "-s",
+            "--sign",
+            action="store_true",
+            help="Sign message after encryption",
+            )
         logger.debug("Encrypt parser set up")
 
     def _setup_decrypt_parser(self) -> None:
@@ -80,9 +93,14 @@ class Parser:
             help="File containing the ciphertext to decrypt",
         )
         decrypt_parser.add_argument(
+            "--pubkey",
+            type=str,
+            help="Path to the public key file (RSA mode, defaults to public.pem)",
+        )
+        decrypt_parser.add_argument(
             "--privkey",
             type=str,
-            help="Path to the private key file (RSA mode)",
+            help="Path to the private key file (RSA mode, defaults to private.pem)",
         )
         decrypt_parser.add_argument(
             "--stdin",
@@ -104,7 +122,59 @@ class Parser:
             type=str,
             help="Path to secret key file for DNA decryption",
         )
+        decrypt_parser.add_argument(
+            "-v",
+            "--verify",
+            action="store_true",
+            help="Verify signature before decryption",
+            )
+        decrypt_parser.add_argument(
+            "--signature-path",
+            help="Path to the signature file for verification",
+            )
         logger.debug("Decrypt parser set up")
+
+    def _setup_signing_parser(self) -> None:
+        logger.debug("Setting up signing parser")
+        signing_parser = self.subparsers.add_parser("s", help="Sign a message")
+        signing_parser.add_argument(
+            "file_path",
+            nargs="?",
+            type=str,
+            help="File containing the message to sign",
+        )
+        signing_parser.add_argument(
+            "--privkey",
+            type=str,
+            help="Path to the private key file (RSA mode)",
+        )
+        signing_parser.add_argument(
+            "--output-path", "-o",
+            type=str,
+            help="Path to save the signature (default: output/signature.txt)",
+        )
+        logger.debug("Signing parser set up")
+
+    def _setup_verifying_parser(self) -> None:
+        logger.debug("Setting up verifying parser")
+        verifying_parser = self.subparsers.add_parser("v", help="Verify a signature")
+        verifying_parser.add_argument(
+            "file_path",
+            nargs="?",
+            type=str,
+            help="File containing the signed message",
+        )
+        verifying_parser.add_argument(
+            "--signature",
+            type=str,
+            help="Path to the signature file",
+        )
+        verifying_parser.add_argument(
+            "--pubkey",
+            type=str,
+            help="Path to the public key file (RSA mode)",
+        )
+        logger.debug("Verifying parser set up")
 
     def parse_args(self) -> argparse.Namespace:
         """Parse and return the command line arguments."""
