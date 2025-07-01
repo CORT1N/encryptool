@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "encryptool"
+version = "1.1.0"
+authors = [
+  { name="Lucas Bonnaire", email="lbonnairepro@gmail.com" },
+]
+description = "An encryption/decryption tool written in Python."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.scripts]
+encryptool = "encryptool.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/CORT1N/encryptool"
+Issues = "https://github.com/CORT1N/encryptool/issues"

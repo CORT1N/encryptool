@@ -1,4 +1,4 @@
-"""Entry point for the application."""
+"""Entry point for the CLI application."""
 from __future__ import annotations
 
 import logging
@@ -6,9 +6,9 @@ from getpass import getpass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.crypto.dna import DNAEngine
-from app.crypto.rsa import RSAEngine
-from app.utils.parser import Parser
+from encryptool.crypto.dna import DNAEngine
+from encryptool.crypto.rsa import RSAEngine
+from encryptool.utils.parser import Parser
 
 logger = logging.getLogger("encryptool")
 
