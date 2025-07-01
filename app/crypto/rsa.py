@@ -1,8 +1,7 @@
 """RSA encryption and decryption module."""
 
-from pathlib import Path
-
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 
@@ -13,35 +12,7 @@ def generate_keys(key_size: int = 2048) -> tuple[RSAPrivateKey, RSAPublicKey]:
     public_key = private_key.public_key()
     return private_key, public_key
 
-def save_keys(private_key: RSAPrivateKey, public_key: RSAPublicKey) -> None:
-    """Save the RSA keys to PEM files."""
-    with Path("private_key.pem").open("wb") as f:
-        f.write(private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.NoEncryption(),
-        ))
-
-    with Path("public_key.pem").open("wb") as f:
-        f.write(public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        ))
-
-def load_private_key(path: str):
-    with Path(path).open("rb") as f:
-        return serialization.load_pem_private_key(
-            f.read(),
-            password=None,
-        )
-
-def load_public_key(path: str):
-    with Path(path).open("rb") as f:
-        return serialization.load_pem_public_key(
-            f.read(),
-        )
-
-def encrypt(public_key, plaintext: str) -> bytes:
+def encrypt(public_key: RSAPublicKey, plaintext: str) -> bytes:
     """Encrypt data using the RSA public key."""
     return public_key.encrypt(
         plaintext.encode("utf-8"),
@@ -52,7 +23,7 @@ def encrypt(public_key, plaintext: str) -> bytes:
         ),
     )
 
-def decrypt(private_key, ciphertext: bytes) -> str:
+def decrypt(private_key: RSAPrivateKey, ciphertext: bytes) -> str:
     """Decrypt data using the RSA private key."""
     plaintext = private_key.decrypt(
         ciphertext,
@@ -63,3 +34,31 @@ def decrypt(private_key, ciphertext: bytes) -> str:
         ),
     )
     return plaintext.decode("utf-8")
+
+def sign(private_key: RSAPrivateKey, message: str) -> bytes:
+    """Sign a message using the RSA private key."""
+    return private_key.sign(
+        message.encode(),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH,
+        ),
+        hashes.SHA256(),
+    )
+
+def verify(public_key: RSAPublicKey, message: str, signature: bytes) -> bool:
+    """Verify a signature using the RSA public key."""
+    try:
+        public_key.verify(
+            signature,
+            message.encode(),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH,
+            ),
+            hashes.SHA256(),
+        )
+    except InvalidSignature:
+        return False
+    else:
+        return True
